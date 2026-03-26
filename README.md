@@ -51,6 +51,29 @@ bookkeeping --help
 
 然后启动新的 OpenClaw 会话，让 skill 被重新加载。
 
+## 发布到 ClawHub
+
+如果发布时上传内容只能包含 `SKILL.md` 和 `references/`，不要直接上传仓库根目录。
+
+先执行：
+
+```bash
+bash scripts/prepare-clawhub-release.sh
+```
+
+执行后会生成可上传目录：
+
+```text
+release/
+```
+
+该目录下只包含：
+
+- `SKILL.md`
+- `references/`
+
+上传这个目录即可。
+
 ## 快速开始
 
 上传一个 `.csv` / `.xlsx` 账单文件，然后说：
