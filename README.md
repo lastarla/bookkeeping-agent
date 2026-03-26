@@ -1,101 +1,80 @@
-# bookkeeping-skill
+# Bookkeeping
 
-一个面向 OpenClaw / ClawHub 的本地记账 skill。
+一个本地记账 skill：导入账单、查重、查询交易、查看汇总，并可启动本地看板。
 
-它本身不负责账单解析和数据库实现，而是依赖本地可用的 `bookkeeping_tool`，帮助用户通过 skill 方式完成导入、查询、汇总和启动本地看板等操作。
+- 依赖：本地已可用的 `bookkeeping` CLI
+- 适用：`.csv` / `.xlsx` 账单文件
+- 默认交互：通常会自动识别合适的记账场景；在多附件或意图不清时会先澄清
 
-## 这个 skill 是做什么的
+## 你可以用它做什么
 
-适合这些场景：
-
-- 导入本地账单文件
-- 检查某个文件是否已经导入过
+- 导入账单附件或本地账单文件
+- 检查某个文件是否已导入（查重）
 - 查询某段时间的交易
-- 汇总某个平台或某个人的收支
+- 查看概览、趋势、分类汇总
 - 启动本地收支看板
-- 清空数据库后重新导入
+- 清空数据库（需要强确认）
 
-## 依赖关系
+## 安装
 
-这个仓库依赖 `bookkeeping_tool` 作为核心能力层。
+### 1) 安装 `bookkeeping` CLI（必需）
 
-也就是说：
-
-- `bookkeeping_tool` 负责账单解析、SQLite、CLI、Web 服务
-- `bookkeeping-skill` 负责 skill 封装与交互体验
-
-如果本地没有可用的 `bookkeeping_tool`，这个 skill 不能独立完成完整工作流。
-
-## 推荐安装方式
-
-推荐先安装 `bookkeeping_tool`，再安装 skill。
-
-### 第一步：安装 core
-
-发布后可通过包管理安装；在仓库阶段，也可以通过 Git 安装：
+macOS 推荐使用 Homebrew：
 
 ```bash
-pipx install "git+https://github.com/<org>/bookkeeping_tool.git"
+brew install lastarla/tap/bookkeeping-tool
 ```
 
-安装完成后，先确认：
+这里安装的是本地 `bookkeeping` CLI；本仓库提供的是 skill 本体，需放入 OpenClaw 的 skills 目录中使用。
+
+当前使用方式是将本仓库放入 skills 目录后重新开启会话加载，并非通过独立包管理器单独安装 skill。
+
+验证：
 
 ```bash
 bookkeeping --help
 ```
 
-### 第二步：安装 skill
+### 2) 安装 skill
 
-按你的 OpenClaw / ClawHub 使用方式安装本 skill。
-
-如果后续提供正式安装命令，应以实际发布方式为准。
-
-## 怎么使用
-
-准备好本地账单文件后，可以通过自然语言让 skill 帮你完成操作。
-
-例如：
+将本仓库放到 OpenClaw 可发现的 skills 目录中：
 
 ```text
-导入 ~/Downloads/example_alipay_2025.csv
+<workspace>/skills/bookkeeping-agent/
 ```
+
+或：
 
 ```text
-查询 2025 年支付宝平台的支出
+~/.openclaw/skills/bookkeeping-agent/
 ```
+
+然后启动新的 OpenClaw 会话，让 skill 被重新加载。
+
+## 快速开始
+
+上传一个 `.csv` / `.xlsx` 账单文件，然后说：
 
 ```text
-启动收支总览
+帮我导入这个账单
 ```
+
+或者直接问：
 
 ```text
-清空数据库，然后重新导入 ~/Downloads/example_wx_2025.xlsx
+看一下 2025 年 3 月支付宝支出概览
 ```
 
-```text
-检查 ~/Downloads/example_alipay_2025.csv 是否已经导入过
-```
+## 行为边界（重要）
 
-## 文件命名建议
+- 不会把通用 Excel/CSV 清洗任务吸收进来
+- 多附件场景不会静默批量导入，通常会先让你确认范围
+- `reset` / 清空数据库类动作必须强确认
+- 不会在运行时下载或安装任何外部可执行程序
 
-为了让 core 正确提取来源信息，建议账单文件名遵循：
+## 参考
 
-- 第一个片段是 `owner`
-- 第二个片段是 `platform`
-
-例如：
-
-- `example_alipay_2025.csv`
-- `example_wx_2025.xlsx`
-
-## 当前仓库状态
-
-当前仓库主要用于整理 skill 的定位、文档和后续交付内容。
-
-如果你是最终用户，重点关注：
-
-- 先确保本地 `bookkeeping_tool` 可用
-- 再按实际发布方式安装本 skill
-- 通过自然语言调用 skill 完成记账任务
-
-如果你是开发者，项目定位和开发约束请查看 `.claude/CLAUDE.md`。
+- 入口： [SKILL.md](SKILL.md)
+- 安装： [references/install.md](references/install.md)
+- 示例： [references/quickstart.md](references/quickstart.md)
+- 排障： [references/troubleshooting.md](references/troubleshooting.md)
