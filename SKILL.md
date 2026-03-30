@@ -1,7 +1,7 @@
 ---
 name: bookkeeping
 description: 导入账单、检查重复、查询交易、查看汇总，并通过本地 bookkeeping CLI 执行。
-metadata: {"openclaw":{"homepage":"https://github.com/lastarla/bookkeeping-skill","requires":{"bins":["bookkeeping"]},"install":[{"id":"brew","kind":"brew","formula":"lastarla/tap/bookkeeping-tool","bins":["bookkeeping"],"label":"Install bookkeeping (Homebrew, macOS)"},{"id":"pipx","kind":"pipx","package":"git+https://github.com/lastarla/bookkeeping-tool.git","bins":["bookkeeping"],"label":"Install bookkeeping (pipx from GitHub)"}]}}
+metadata: {"openclaw":{"homepage":"https://github.com/lastarla/bookkeeping-agent","requires":{"bins":["bookkeeping"]},"install":[{"id":"brew","kind":"brew","formula":"lastarla/tap/bookkeeping-tool","bins":["bookkeeping"],"label":"Install bookkeeping (Homebrew, macOS)"},{"id":"pipx","kind":"pipx","package":"git+https://github.com/lastarla/bookkeeping-tool.git","bins":["bookkeeping"],"label":"Install bookkeeping (pipx from GitHub)"}]}}
 ---
 
 # Bookkeeping
@@ -21,7 +21,10 @@ Use this skill only when `bookkeeping` is already available on `PATH`.
 
 Attachment prerequisite:
 
-- If the user provides a message attachment rather than an already-local file, first obtain a local file path from the OpenClaw attachment download flow, then pass that local path into the bookkeeping CLI
+- If the current OpenClaw message context already includes a local attachment path, such as an inbound media path, use that local path directly
+- If no local path is available but a Feishu attachment reference exists, call `message_attachment_download` and use the returned `download.local_path`
+- The bookkeeping CLI only consumes local file paths and does not read remote message attachments directly
+- For file type checks, prefer the attachment's original filename or MIME metadata; do not rely only on the inbound local path suffix because inbound files may not keep `.csv` or `.xlsx`
 
 Common high-confidence signals:
 
@@ -72,6 +75,7 @@ Never do these silently:
 
 - If there is exactly one high-confidence bill attachment, continue with that file
 - If there are multiple high-confidence bill attachments, list the candidates and ask the user to confirm the scope
+- If multiple candidate local paths or downloadable attachment references exist, do not guess silently; list candidates and ask the user to confirm
 - Do not silently import all attachments by default
 - In mixed-attachment scenarios, only include high-confidence bill candidates and explain what was excluded
 
@@ -81,8 +85,10 @@ Use the local `bookkeeping` CLI as the execution backend.
 
 Attachment handling rule before CLI execution:
 
-- If the user provides a local file path directly, use that file path
-- If the user provides a message attachment, first download it through the OpenClaw attachment download flow and use the returned `download.local_path` as `<file>`
+- Prefer an existing local attachment path from the current OpenClaw message context, such as an inbound media path
+- If no local path is present and the attachment is a Feishu file reference, call `message_attachment_download`
+- Use the final resolved local path as `<file>`
+- For file type checks, use the original attachment name or MIME metadata before falling back to the local path suffix
 - Do not assume the bookkeeping CLI can read remote message attachments directly
 
 CLI mapping:
@@ -165,7 +171,9 @@ When the CLI returns bookkeeping results:
 - If `bookkeeping` is missing, clearly say that this skill depends on the local CLI
 - For installation guidance, treat Homebrew as a macOS path and suggest `pipx install "git+https://github.com/lastarla/bookkeeping-tool.git"` as the cross-platform default
 - If the database is empty, ask the user to import bills before running query or summary tasks
-- If the user provided an attachment and no local file path exists yet, first obtain `download.local_path` from the attachment download flow before calling the CLI
+- If the user provided an attachment, first look for an already-resolved local file path in the current message context
+- Only when no local path exists should the skill call `message_attachment_download`
+- For attachment type checks, prefer the original attachment name or MIME metadata; do not rely only on the inbound local filename suffix
 - If the attachment type is unsupported, say that the skill currently supports only `.csv` and `.xlsx`
 - For single-entry bookkeeping, summarize the final structured fields briefly: direction, amount, platform, category, and date
 - If there are reminders, append a short budget summary after the bookkeeping result

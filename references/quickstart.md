@@ -15,9 +15,10 @@
 期望行为：
 
 - OpenClaw 识别为记账导入场景
-- 如果上传的是消息附件，先通过附件下载链路把文件落到本地
-- bookkeeping skill 接手，并使用返回的 `download.local_path`
-- 调用 `bookkeeping import <file> --json`
+- 如果当前消息上下文已经提供本地 inbound 文件路径，优先直接使用该路径
+- 如果没有本地路径、只有附件引用，再通过附件下载链路获取 `download.local_path`
+- bookkeeping skill 使用最终解析出的本地路径调用 `bookkeeping import <file> --json`
+- 文件类型判断优先依据附件原始文件名或 MIME 信息，而不是只看 inbound 落盘文件名后缀
 
 ## 场景 2：上传账单后查重
 

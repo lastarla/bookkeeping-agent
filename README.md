@@ -53,17 +53,19 @@ bookkeeping --help
 
 然后启动新的 OpenClaw 会话，让 skill 被重新加载。
 
-### 3) 若要处理消息附件，安装附件下载插件
+### 3) 若要处理消息附件，可选安装附件下载插件
 
-如果你希望直接处理聊天里的账单附件，而不是只处理已经在本地的文件路径，还需要在 OpenClaw 中额外安装并启用 `@angli/openclaw-message-attachments`。
+如果 OpenClaw 当前消息上下文已经提供了本地 inbound 附件路径，bookkeeping skill 会优先直接使用这个本地路径。
 
-账单附件链路是：
+只有在上下文里没有本地路径、只有 Feishu 附件引用时，才需要额外安装并启用 `@angli/openclaw-message-attachments` 作为下载 fallback。
 
-1. 附件下载插件先把消息附件下载到本地
-2. 返回 `download.local_path`
+推荐链路是：
+
+1. 优先使用 OpenClaw 已落盘的本地 inbound 文件
+2. 如果没有本地路径，再调用附件下载插件获取 `download.local_path`
 3. bookkeeping skill 再调用 `bookkeeping import <file> --json`
 
-如果没有这一步，bookkeeping skill 只能直接消费本地文件，不能自己读取远端消息附件。
+另外要注意：inbound 本地文件名可能不保留 `.csv` / `.xlsx` 后缀，类型判断应优先依据附件原始文件名或 MIME 信息，而不是只看本地落盘文件名。
 
 ## 发布到 ClawHub
 
