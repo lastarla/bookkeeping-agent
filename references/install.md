@@ -50,6 +50,18 @@ OpenClaw 会从 skills 目录发现本 skill。
 
 如果你修改了 `SKILL.md` 后没有立即生效，请开启新会话后重试。
 
+## 处理消息附件的额外要求
+
+如果你希望直接处理聊天中的账单附件，而不是只处理本地现成文件，还需要在 OpenClaw 中额外安装并启用 `@angli/openclaw-message-attachments`。
+
+附件处理链路是：
+
+1. 附件下载插件先下载消息附件
+2. 返回 `download.local_path`
+3. bookkeeping skill 再把这个本地路径传给 `bookkeeping import <file> --json`
+
+没有这个附件下载插件时，本 skill 仍可处理本地文件路径，但不能自己读取远端消息附件。
+
 ## 维护者发布注意事项
 
 如果计划发布到 ClawHub：

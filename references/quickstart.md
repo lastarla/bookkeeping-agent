@@ -15,7 +15,8 @@
 期望行为：
 
 - OpenClaw 识别为记账导入场景
-- bookkeeping skill 接手
+- 如果上传的是消息附件，先通过附件下载链路把文件落到本地
+- bookkeeping skill 接手，并使用返回的 `download.local_path`
 - 调用 `bookkeeping import <file> --json`
 
 ## 场景 2：上传账单后查重

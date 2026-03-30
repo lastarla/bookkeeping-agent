@@ -25,6 +25,8 @@
 
 本 skill 默认采取保守触发策略，避免误处理普通表格任务。
 
+如果上传的是消息附件而不是本地文件，还要确认 OpenClaw 侧已安装并启用 `@angli/openclaw-message-attachments`。bookkeeping skill 本身只消费本地文件路径，不直接读取远端消息附件。
+
 ## 上传了多个附件，但 skill 没有直接导入
 
 这是预期行为。

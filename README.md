@@ -53,6 +53,18 @@ bookkeeping --help
 
 然后启动新的 OpenClaw 会话，让 skill 被重新加载。
 
+### 3) 若要处理消息附件，安装附件下载插件
+
+如果你希望直接处理聊天里的账单附件，而不是只处理已经在本地的文件路径，还需要在 OpenClaw 中额外安装并启用 `@angli/openclaw-message-attachments`。
+
+账单附件链路是：
+
+1. 附件下载插件先把消息附件下载到本地
+2. 返回 `download.local_path`
+3. bookkeeping skill 再调用 `bookkeeping import <file> --json`
+
+如果没有这一步，bookkeeping skill 只能直接消费本地文件，不能自己读取远端消息附件。
+
 ## 发布到 ClawHub
 
 如果发布时上传内容只能包含 `SKILL.md` 和 `references/`，不要直接上传仓库根目录。

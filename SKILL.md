@@ -1,7 +1,7 @@
 ---
 name: bookkeeping
 description: 导入账单、检查重复、查询交易、查看汇总，并通过本地 bookkeeping CLI 执行。
-metadata: {"openclaw":{"homepage":"https://github.com/lastarla/bookkeeping-skill","requires":{"bins":["bookkeeping"]},"install":[{"id":"brew","kind":"brew","formula":"lastarla/tap/bookkeeping-tool","bins":["bookkeeping"],"label":"Install bookkeeping (Homebrew)"}]}}
+metadata: {"openclaw":{"homepage":"https://github.com/lastarla/bookkeeping-skill","requires":{"bins":["bookkeeping"]},"install":[{"id":"brew","kind":"brew","formula":"lastarla/tap/bookkeeping-tool","bins":["bookkeeping"],"label":"Install bookkeeping (Homebrew, macOS)"},{"id":"pipx","kind":"pipx","package":"git+https://github.com/lastarla/bookkeeping-tool.git","bins":["bookkeeping"],"label":"Install bookkeeping (pipx from GitHub)"}]}}
 ---
 
 # Bookkeeping
@@ -18,6 +18,10 @@ Use this skill only when `bookkeeping` is already available on `PATH`.
 - You want to set or update a day/month/year expense budget
 - You explicitly want to start the local bookkeeping dashboard
 - You explicitly want to reset the database
+
+Attachment prerequisite:
+
+- If the user provides a message attachment rather than an already-local file, first obtain a local file path from the OpenClaw attachment download flow, then pass that local path into the bookkeeping CLI
 
 Common high-confidence signals:
 
@@ -73,7 +77,15 @@ Never do these silently:
 
 ## CLI mapping
 
-Use the local `bookkeeping` CLI as the execution backend:
+Use the local `bookkeeping` CLI as the execution backend.
+
+Attachment handling rule before CLI execution:
+
+- If the user provides a local file path directly, use that file path
+- If the user provides a message attachment, first download it through the OpenClaw attachment download flow and use the returned `download.local_path` as `<file>`
+- Do not assume the bookkeeping CLI can read remote message attachments directly
+
+CLI mapping:
 
 - Import: `bookkeeping import <file> --json`
 - Query: `bookkeeping query --json`
@@ -151,7 +163,9 @@ When the CLI returns bookkeeping results:
 - Then either state the next action or ask the smallest necessary question
 - Avoid exposing raw CLI details unless the user is debugging setup issues
 - If `bookkeeping` is missing, clearly say that this skill depends on the local CLI
+- For installation guidance, treat Homebrew as a macOS path and suggest `pipx install "git+https://github.com/lastarla/bookkeeping-tool.git"` as the cross-platform default
 - If the database is empty, ask the user to import bills before running query or summary tasks
+- If the user provided an attachment and no local file path exists yet, first obtain `download.local_path` from the attachment download flow before calling the CLI
 - If the attachment type is unsupported, say that the skill currently supports only `.csv` and `.xlsx`
 - For single-entry bookkeeping, summarize the final structured fields briefly: direction, amount, platform, category, and date
 - If there are reminders, append a short budget summary after the bookkeeping result
