@@ -1,124 +1,114 @@
 ---
 name: bookkeeping
-description: 导入账单、检查重复、查询交易、查看汇总，并通过本地 bookkeeping CLI 执行。
+description: 导入账单、检查重复、查询交易、查看汇总，并通过本地 bookkeeping CLI 执行。优先处理当前消息里已经落到本地的账单附件；当用户要求导入支付宝、微信或本地账单时，优先直接使用当前消息上下文中已有的本地文件路径。
 metadata: {"openclaw":{"homepage":"https://github.com/lastarla/bookkeeping-agent","requires":{"bins":["bookkeeping"]},"install":[{"id":"brew","kind":"brew","formula":"lastarla/tap/bookkeeping-tool","bins":["bookkeeping"],"label":"Install bookkeeping (Homebrew, macOS)"},{"id":"pipx","kind":"pipx","package":"git+https://github.com/lastarla/bookkeeping-tool.git","bins":["bookkeeping"],"label":"Install bookkeeping (pipx from GitHub)"}]}}
 ---
 
 # Bookkeeping
 
-Use this skill only when `bookkeeping` is already available on `PATH`.
+仅当本地 `PATH` 中已经可用 `bookkeeping` 命令时，才使用这个 skill。
 
-## Use this skill when
+## 适用场景
 
-- You want to import a bill attachment or a local bill file
-- You want to check whether a bill file was already imported
-- You want to query transactions by time range, platform, direction, or category
-- You want to view overview, trend, or category summaries
-- You want to record a single expense or income from natural language
-- You want to set or update a day/month/year expense budget
-- You explicitly want to start the local bookkeeping dashboard
-- You explicitly want to reset the database
+- 你想导入账单附件或本地账单文件
+- 你想检查某个账单文件是否已经导入过
+- 你想按时间范围、平台、收支方向或分类查询交易
+- 你想查看概览、趋势或分类汇总
+- 你想用自然语言记录单笔支出或收入
+- 你想设置或检查日 / 月 / 年预算
+- 你明确想启动本地 bookkeeping 看板
+- 你明确想重置数据库
 
-Attachment prerequisite:
+高置信账单信号：
 
-- If the current OpenClaw message context already includes a local attachment path, such as an inbound media path, use that local path directly
-- If no local path is available but a Feishu attachment reference exists, call `message_attachment_download` and use the returned `download.local_path`
-- The bookkeeping CLI only consumes local file paths and does not read remote message attachments directly
-- For file type checks, prefer the attachment's original filename or MIME metadata; do not rely only on the inbound local path suffix because inbound files may not keep `.csv` or `.xlsx`
+- 文件扩展名为 `.csv` 或 `.xlsx`
+- 文件名包含 `alipay`、`wx`、`wechat`、`bill`、`账单`、`交易`、`流水`
+- 用户提到 `账单`、`流水`、`导入`、`支出`、`收入`、`支付宝` 或 `微信`
 
-Common high-confidence signals:
+## 附件与文件解析
 
-- File extension is `.csv` or `.xlsx`
-- Filename includes `alipay`, `wx`, `wechat`, `bill`, `账单`, `交易`, or `流水`
-- The user mentions `账单`, `流水`, `导入`, `支出`, `收入`, `支付宝`, or `微信`
-- The user provides a short natural-language bookkeeping message such as `吃午饭微信20` or `支付宝到账100`
-- The user explicitly asks to set, update, or check a day/month/year budget
+按以下顺序解析最终要导入的文件：
 
-## Do not use this skill when
+1. 如果当前 OpenClaw 消息上下文里已经有本地附件路径，直接使用该路径
+2. 优先使用已经落在本地的 inbound 文件；典型路径可能位于 `/root/.openclaw/media/inbound/`
+3. 如果没有本地路径，但存在可下载的消息附件引用，则先使用当前环境中可用的附件下载能力将文件落到本地
+4. 将最终得到的本地路径传给 CLI
 
-- The task is generic Excel or CSV cleanup
-- The task is about empty values, duplicate rows, or headers only
-- The task is unrelated business analysis such as sales or inventory reports
-- The input is an image, PDF, or archive that is outside the current supported scope
+处理规则：
 
-## Behavior rules
+- 不要要求用户重新下载一个已经存在于本地的文件
+- 不要要求用户手动把 inbound 文件复制到 workspace，只要当前进程能读就直接用
+- 当 `message_attachment_download` 可用时，优先调用它，并使用返回的 `download.local_path`
+- 如果当前环境没有可用的附件下载能力，则明确告知用户当前只能处理已经落到本地的附件或本地文件路径
+- 文件类型判断优先依据附件原始文件名或 MIME 元数据，不要只依赖 inbound 本地文件名后缀，因为 inbound 文件可能不保留 `.csv` 或 `.xlsx`
+- 如果存在多个可能的账单文件，先列出候选并让用户确认要导入哪一个
+- 如果只有一个高置信账单文件且用户明确说要导入，可以直接继续
 
-### Execute directly
+## CLI 映射
 
-Under high confidence, these lower-risk actions can be executed directly:
+使用本地 `bookkeeping` CLI 作为执行后端。
 
-- Query transactions
-- Run `summary overview`, `summary trend`, or `summary category`
-- Inspect import batches
-- Inspect duplicate imports
-- Record a single income or expense when amount, direction, and platform can be inferred with high confidence
-- Set or check budgets
+- 导入：`bookkeeping import <file> --original-file-name <name> --json`
+- 查询：`bookkeeping query --json`
+- 概览汇总：`bookkeeping summary overview --json`
+- 趋势汇总：`bookkeeping summary trend --json`
+- 分类汇总：`bookkeeping summary category --json`
+- 记录支出：`bookkeeping record expense --payload <json> --json`
+- 记录收入：`bookkeeping record income --payload <json> --json`
+- 设置预算：`bookkeeping budget set --scope <scope> --period <period> --amount <amount> --json`
+- 检查预算：`bookkeeping budget check --scope <scope> --trade-date <date> --json`
+- 查看批次：`bookkeeping inspect batches --json`
+- 查看重复：`bookkeeping inspect duplicates --json`
+- 启动看板：`bookkeeping serve`
+- 重置数据库：`bookkeeping reset --yes`
 
-### Clarify or confirm first
+导入规则：
 
-Ask the minimum follow-up question first when:
+- 当 inbound 本地文件没有可用后缀时，传入 `--original-file-name <original attachment name>`，让 CLI 仍然能根据原始文件名推断平台、owner 或格式
+- 只要可用，优先使用 `--json` 输出
+- 如果导入失败，简要说明原始错误原因
 
-- There is a single bill attachment but the request is vague, such as “处理一下”
-- The user wants to import, but there are multiple likely bill attachments
-- The user asks whether “this file” was imported, but the reference is unclear
-- The user wants to start the dashboard, but has not clearly said to start the local service now
+## 行为规则
 
-### Require strong confirmation
+### 可直接执行
 
-Never do these silently:
+在高置信、低风险情况下，可以直接执行：
+
+- 导入单个高置信账单附件或本地账单文件
+- 查询交易
+- 执行 `summary overview`、`summary trend`、`summary category`
+- 查看导入批次
+- 查看重复导入情况
+- 当金额、收支方向与平台可高置信推断时，记录单笔收入或支出
+- 设置或检查预算
+
+### 先澄清或确认
+
+遇到以下情况时，先问最小必要问题：
+
+- 只有一个账单附件，但用户表达很模糊，例如“处理一下”
+- 用户说要导入，但存在多个疑似账单附件或多个候选本地文件
+- 用户问“这个文件导入过没有”，但当前指代不清
+- 用户想启动 dashboard，但没有明确表示现在就要启动本地服务
+
+### 必须强确认
+
+以下动作不能静默执行：
 
 - `bookkeeping reset --yes`
-- Resetting the database and then re-importing
-- Batch processing multiple attachments
+- 重置数据库后再重新导入
+- 批量处理多个附件
 
-## Multiple attachment rules
+## 自然语言记账分类规则
 
-- If there is exactly one high-confidence bill attachment, continue with that file
-- If there are multiple high-confidence bill attachments, list the candidates and ask the user to confirm the scope
-- If multiple candidate local paths or downloadable attachment references exist, do not guess silently; list candidates and ask the user to confirm
-- Do not silently import all attachments by default
-- In mixed-attachment scenarios, only include high-confidence bill candidates and explain what was excluded
+当通过自然语言记录单笔收入或支出时：
 
-## CLI mapping
+- 允许模型推断分类，但必须落入固定分类集合
+- 正常路径下不要要求用户手动选择分类
+- 不要创造固定集合之外的自由分类
+- 低置信度时，支出回退到 `其他支出`，收入回退到 `其他收入`
 
-Use the local `bookkeeping` CLI as the execution backend.
-
-Attachment handling rule before CLI execution:
-
-- Prefer an existing local attachment path from the current OpenClaw message context, such as an inbound media path
-- If no local path is present and the attachment is a Feishu file reference, call `message_attachment_download`
-- Use the final resolved local path as `<file>`
-- For file type checks, use the original attachment name or MIME metadata before falling back to the local path suffix
-- Do not assume the bookkeeping CLI can read remote message attachments directly
-
-CLI mapping:
-
-- Import: `bookkeeping import <file> --json`
-- Query: `bookkeeping query --json`
-- Overview summary: `bookkeeping summary overview --json`
-- Trend summary: `bookkeeping summary trend --json`
-- Category summary: `bookkeeping summary category --json`
-- Record expense: `bookkeeping record expense --payload <json> --json`
-- Record income: `bookkeeping record income --payload <json> --json`
-- Set budget: `bookkeeping budget set --scope <scope> --period <period> --amount <amount> --json`
-- Check budget: `bookkeeping budget check --scope <scope> --trade-date <date> --json`
-- Batch inspection: `bookkeeping inspect batches --json`
-- Duplicate inspection: `bookkeeping inspect duplicates --json`
-- Dashboard: `bookkeeping serve`
-- Reset: `bookkeeping reset --yes`
-
-Prefer `--json` output whenever it is available.
-
-## Category policy for natural-language bookkeeping
-
-When recording a single income or expense from natural language:
-
-- Let the model infer the category, but it must map into a fixed category set
-- Do not ask the user to choose a category during the normal happy path
-- Do not invent free-form categories outside the fixed set
-- If confidence is low, fall back to `其他支出` or `其他收入`
-
-Fixed expense categories:
+固定支出分类：
 
 - `餐饮`
 - `交通`
@@ -130,7 +120,7 @@ Fixed expense categories:
 - `教育`
 - `其他支出`
 
-Fixed income categories:
+固定收入分类：
 
 - `工资`
 - `报销`
@@ -139,41 +129,26 @@ Fixed income categories:
 - `理财`
 - `其他收入`
 
-## Reminder protocol
+## reminders 协议
 
-When the CLI returns bookkeeping results:
+当 CLI 返回 bookkeeping 结果时：
 
-- Read `budget_checks` as the full per-scope budget state
-- Read `reminders` as the message-ready reminder list for OpenClaw or IM channels
-- Each reminder item may include:
-  - `type`
-  - `scope`
-  - `scope_label`
-  - `status`
-  - `severity`
-  - `period_key`
-  - `budget_amount`
-  - `current_expense`
-  - `usage_ratio`
-  - `currency`
-  - `message`
-  - `channel_text`
-- Prefer `channel_text` when sending a concise chat message to Feishu, WeChat, or similar IM channels
-- If `reminders` is empty, do not create a budget warning message
-- If `status` is `unset`, you may gently suggest that the user set a budget
-- If `status` is `warning` or `exceeded`, surface the reminder clearly in the reply
+- 将 `budget_checks` 视为完整的预算状态
+- 将 `reminders` 视为可直接面向 OpenClaw 或 IM 通道输出的提醒列表
+- 如果 reminder 项中存在 `channel_text`，优先使用它生成简洁消息
+- 如果 `reminders` 为空，不要额外生成预算提醒文案
+- 如果 `status` 为 `unset`，可以温和提示用户设置预算
+- 如果 `status` 为 `warning` 或 `exceeded`，在回复中明确呈现预算提醒
+- 不要忽略已有 reminders；如果存在，就在结果中带出摘要
 
-## Response rules
+## 回复规则
 
-- First state the recognized intent
-- Then either state the next action or ask the smallest necessary question
-- Avoid exposing raw CLI details unless the user is debugging setup issues
-- If `bookkeeping` is missing, clearly say that this skill depends on the local CLI
-- For installation guidance, treat Homebrew as a macOS path and suggest `pipx install "git+https://github.com/lastarla/bookkeeping-tool.git"` as the cross-platform default
-- If the database is empty, ask the user to import bills before running query or summary tasks
-- If the user provided an attachment, first look for an already-resolved local file path in the current message context
-- Only when no local path exists should the skill call `message_attachment_download`
-- For attachment type checks, prefer the original attachment name or MIME metadata; do not rely only on the inbound local filename suffix
-- If the attachment type is unsupported, say that the skill currently supports only `.csv` and `.xlsx`
-- For single-entry bookkeeping, summarize the final structured fields briefly: direction, amount, platform, category, and date
-- If there are reminders, append a short budget summary after the bookkeeping result
+- 先说明识别到的意图
+- 再说明下一步动作，或提出最小必要问题
+- 除非用户在排查环境问题，否则不要暴露底层 CLI 细节
+- 如果缺少 `bookkeeping`，明确说明这个 skill 依赖本地 CLI
+- 如果数据库为空，先提示用户导入账单，再进行查询或汇总
+- 如果附件类型不支持，明确说明当前只支持 `.csv` 和 `.xlsx`
+- 单笔记账成功后，简要返回收支方向、金额、平台、分类和日期
+- 导入成功后，尽量返回文件名、owner、平台、总行数、导入行数、跳过行数和 batch id（如果 CLI 有这些字段）
+- 如果存在 reminders，在结果后追加简短预算摘要
