@@ -12,6 +12,8 @@
 - 检查某个文件是否已导入（查重）
 - 查询某段时间的交易
 - 查看概览、趋势、分类汇总
+- 用自然语言记录单笔支出或收入
+- 设置、修改、检查日 / 月 / 年预算
 - 启动本地收支看板
 - 清空数据库（需要强确认）
 
@@ -51,6 +53,20 @@ bookkeeping --help
 
 然后启动新的 OpenClaw 会话，让 skill 被重新加载。
 
+### 3) 若要处理消息附件，可选安装附件下载插件
+
+如果 OpenClaw 当前消息上下文已经提供了本地 inbound 附件路径，bookkeeping skill 会优先直接使用这个本地路径。
+
+只有在上下文里没有本地路径、只有 Feishu 附件引用时，才需要额外安装并启用 `@angli/openclaw-message-attachments` 作为下载 fallback。
+
+推荐链路是：
+
+1. 优先使用 OpenClaw 已落盘的本地 inbound 文件
+2. 如果没有本地路径，再调用附件下载插件获取 `download.local_path`
+3. bookkeeping skill 再调用 `bookkeeping import <file> --json`
+
+另外要注意：inbound 本地文件名可能不保留 `.csv` / `.xlsx` 后缀，类型判断应优先依据附件原始文件名或 MIME 信息，而不是只看本地落盘文件名。
+
 ## 发布到 ClawHub
 
 如果发布时上传内容只能包含 `SKILL.md` 和 `references/`，不要直接上传仓库根目录。
@@ -87,6 +103,24 @@ release/
 ```text
 看一下 2025 年 3 月支付宝支出概览
 ```
+
+也支持自然语言单笔记账，例如：
+
+```text
+吃午饭微信20
+```
+
+```text
+支付宝到账100
+```
+
+也支持预算设置与提醒，例如：
+
+```text
+帮我设置这个月支出预算 1000
+```
+
+记账命令执行后，如果 CLI 返回 `reminders`，skill 会优先把其中的预算提醒转成聊天消息，便于后续接飞书、微信等 IM 场景。
 
 ## 行为边界（重要）
 
